@@ -8,7 +8,7 @@
 #include "assert.h"
 
 // WRITEME: The default attribute propagation rule
-#define default_rule(X) (X->visit_children(typecheck))
+#define default_rule(X) (X->visit_children(this))
 
 #include <typeinfo>
 
@@ -251,184 +251,228 @@ class Typecheck : public Visitor
 
     void visitProgramImpl(ProgramImpl* p)
     {
-       
+       default_rule(p);       
        check_for_one_main(p); 
     }
 
     void visitProcImpl(ProcImpl* p)
     {
+       default_rule(p);       
     }
 
     void visitCall(Call* p)
     {
+       default_rule(p);       
     }
 
     void visitNested_blockImpl(Nested_blockImpl* p)
     {
+       default_rule(p);       
     }
 
     void visitProcedure_blockImpl(Procedure_blockImpl* p)
     {
+       default_rule(p);       
     }
 
     void visitDeclImpl(DeclImpl* p)
     {
+       default_rule(p);       
     }
 
     void visitAssignment(Assignment* p)
     {
+       default_rule(p);       
     }
 
     void visitStringAssignment(StringAssignment *p)
     {
+       default_rule(p);       
     }
 
     void visitIdent(Ident* p)
     {
+       default_rule(p);       
     }
 
     void visitReturn(Return* p)
     {
+       default_rule(p);       
     }
 
     void visitIfNoElse(IfNoElse* p)
     {
+       default_rule(p);       
     }
 
     void visitIfWithElse(IfWithElse* p)
     {
+       default_rule(p);       
     }
 
     void visitWhileLoop(WhileLoop* p)
     {
+       default_rule(p);       
     }
 
     void visitCodeBlock(CodeBlock *p) 
     {
+       default_rule(p);       
     }
 
     void visitTInteger(TInteger* p)
     {
+       default_rule(p);       
     }
 
     void visitTBoolean(TBoolean* p)
     {
+       default_rule(p);       
     }
 
     void visitTCharacter(TCharacter* p)
     {
+       default_rule(p);       
     }
 
     void visitTString(TString* p)
     {
+       default_rule(p);       
     }
 
     void visitTCharPtr(TCharPtr* p)
     {
+       default_rule(p);       
     }
 
     void visitTIntPtr(TIntPtr* p)
     {
+       default_rule(p);       
     }
 
     void visitAnd(And* p)
     {
+       default_rule(p);       
     }
 
     void visitDiv(Div* p)
     {
+       default_rule(p);       
     }
 
     void visitCompare(Compare* p)
     {
+       default_rule(p);       
     }
 
     void visitGt(Gt* p)
     {
+       default_rule(p);       
     }
 
     void visitGteq(Gteq* p)
     {
+       default_rule(p);       
     }
 
     void visitLt(Lt* p)
     {
+       default_rule(p);       
     }
 
     void visitLteq(Lteq* p)
     {
+       default_rule(p);       
     }
 
     void visitMinus(Minus* p)
     {
+       default_rule(p);       
     }
 
     void visitNoteq(Noteq* p)
     {
+       default_rule(p);       
     }
 
     void visitOr(Or* p)
     {
+       default_rule(p);       
     }
 
     void visitPlus(Plus* p)
     {
+       default_rule(p);       
     }
 
     void visitTimes(Times* p)
     {
+       default_rule(p);       
     }
 
     void visitNot(Not* p)
     {
+       default_rule(p);       
     }
 
     void visitUminus(Uminus* p)
     {
+       default_rule(p);       
     }
 
     void visitArrayAccess(ArrayAccess* p)
     {
+       default_rule(p);       
     }
 
     void visitIntLit(IntLit* p)
     {
+       default_rule(p);       
     }
 
     void visitCharLit(CharLit* p)
     {
+       default_rule(p);       
     }
 
     void visitBoolLit(BoolLit* p)
     {
+       default_rule(p);       
     }
 
     void visitNullLit(NullLit* p)
     {
+       default_rule(p);       
     }
 
     void visitAbsoluteValue(AbsoluteValue* p)
     {
+       default_rule(p);       
     }
 
     void visitAddressOf(AddressOf* p)
     {
+       default_rule(p);       
     }
 
     void visitVariable(Variable* p)
     {
+       default_rule(p);       
     }
 
     void visitDeref(Deref* p)
     {
+       default_rule(p);       
     }
 
     void visitDerefVariable(DerefVariable* p)
     {
+       default_rule(p);       
     }
 
     void visitArrayElement(ArrayElement* p)
     {
+       default_rule(p);       
     }
 
     // Special cases
