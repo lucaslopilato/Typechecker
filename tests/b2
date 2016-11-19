@@ -1,0 +1,9 @@
+procedure dup () return integer
+{
+    return -1;
+}
+
+procedure dup () return integer
+{
+    return -1;
+}

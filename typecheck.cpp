@@ -188,8 +188,8 @@ class Typecheck : public Visitor
     {
     }
 
-    // Create a symbol for the procedure and check there is none already
-    // existing
+    // Check that function being called exists and that types of arguments
+    // and return values are consistent
     void check_call(Call *p)
     {
     }
@@ -289,7 +289,7 @@ class Typecheck : public Visitor
     void visitProgramImpl(ProgramImpl* p)
     {
        default_rule(p);       
-       //check_for_one_main(p); 
+       check_for_one_main(p); 
     }
 
     void visitProcImpl(ProcImpl* p)
@@ -305,12 +305,16 @@ class Typecheck : public Visitor
 
     void visitNested_blockImpl(Nested_blockImpl* p)
     {
-       default_rule(p);       
+       m_st->open_scope();
+       default_rule(p);   
+       m_st->close_scope();    
     }
 
     void visitProcedure_blockImpl(Procedure_blockImpl* p)
     {
-       default_rule(p);       
+       m_st->open_scope();
+       default_rule(p);  
+       m_st->close_scope();     
     }
 
     void visitDeclImpl(DeclImpl* p)

@@ -1,4 +1,6 @@
 procedure Main () return integer
 { 
-    return 1;
+    var x: integer;
+    var x: intptr;
+    return 0;
 }
