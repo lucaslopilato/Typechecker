@@ -135,11 +135,47 @@ class Typecheck : public Visitor
     // existing
     void add_proc_symbol(ProcImpl* p)
     {
+        char* name;
+        Symbol* s;
+        
+        //Initialize Base Symbol Attributes
+        s = new Symbol();
+        std::cout << "proc->m_symname->spelling() :"<< p->m_symname->spelling()<<std::endl;
+        name = strdup(p->m_symname->spelling());
+        s->m_basetype = bt_procedure;
+
+        //Initialize Procedure Attributes
+        s->m_return_type = p->m_type->m_attribute.m_basetype;
+        s->m_arg_type = std::vector<Basetype>();
+        
+        for(std::list<Decl_ptr>::iterator iter = p->m_decl_list->begin();
+            iter != p->m_decl_list->end(); ++iter)
+        {
+            s->m_arg_type.push_back((*iter)->m_attribute.m_basetype);
+            
+        }
+        if(!m_st->insert(name, s)){ //Check if symbol is not already present
+                this->t_error(dup_proc_name, p->m_attribute);
+        }
     }
 
     // Add symbol table information for all the declarations following
     void add_decl_symbol(DeclImpl* p)
     {
+        char* name;
+        Symbol* s;
+        for(std::list<SymName_ptr>::iterator iter = p->m_symname_list->begin();
+            iter != p->m_symname_list->end(); ++iter)
+        {
+            name = strdup((*iter)->spelling());
+            s = new Symbol();
+            s->m_basetype = p->m_type->m_attribute.m_basetype;
+
+            if(!m_st->insert(name, s)){ //Check if symbol is not already present
+                this->t_error(dup_var_name, p->m_attribute);
+            }    
+            
+        }
     }
 
     // Check that the return statement of a procedure has the appropriate type
@@ -170,6 +206,7 @@ class Typecheck : public Visitor
 
     void check_assignment(Assignment* p)
     {
+        
     }
 
     void check_string_assignment(StringAssignment* p)
@@ -252,12 +289,13 @@ class Typecheck : public Visitor
     void visitProgramImpl(ProgramImpl* p)
     {
        default_rule(p);       
-       check_for_one_main(p); 
+       //check_for_one_main(p); 
     }
 
     void visitProcImpl(ProcImpl* p)
     {
-       default_rule(p);       
+       default_rule(p); 
+       add_proc_symbol(p);  
     }
 
     void visitCall(Call* p)
@@ -277,7 +315,8 @@ class Typecheck : public Visitor
 
     void visitDeclImpl(DeclImpl* p)
     {
-       default_rule(p);       
+       default_rule(p);
+       add_decl_symbol(p); 
     }
 
     void visitAssignment(Assignment* p)
@@ -322,32 +361,38 @@ class Typecheck : public Visitor
 
     void visitTInteger(TInteger* p)
     {
-       default_rule(p);       
+       default_rule(p);      
+       p->m_attribute.m_basetype = bt_integer; 
     }
 
     void visitTBoolean(TBoolean* p)
     {
-       default_rule(p);       
+       default_rule(p);
+       p->m_attribute.m_basetype = bt_boolean;
     }
 
     void visitTCharacter(TCharacter* p)
     {
-       default_rule(p);       
+       default_rule(p);   
+       p->m_attribute.m_basetype = bt_char;   
     }
 
     void visitTString(TString* p)
     {
-       default_rule(p);       
+       default_rule(p);
+       p->m_attribute.m_basetype = bt_string;
     }
 
     void visitTCharPtr(TCharPtr* p)
     {
-       default_rule(p);       
+       default_rule(p);
+       p->m_attribute.m_basetype = bt_charptr; 
     }
 
     void visitTIntPtr(TIntPtr* p)
     {
-       default_rule(p);       
+       default_rule(p);
+       p->m_attribute.m_basetype = bt_intptr; 
     }
 
     void visitAnd(And* p)
