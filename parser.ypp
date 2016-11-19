@@ -21,14 +21,439 @@
  *  - Put all your type definitions here
  *  - Put all your precedence/associativity rules here
  */
+/*Token declarations for type string literals*/
+%token T_BOOL T_CHAR T_INT T_STRING T_INTP T_CHARP
+%token IF ELSE WHILE
+%token N VAR PROC RET
+%token V_IDENTIFIER V_STRING V_INTEGER V_CHAR V_BOOL
 
-%token USELESS
+/* Token declarations for operator string literals */
+
+/*Associativity as followed from C Manual */
+%right '='
+%left OR
+%left AND
+%left EQ NEQ
+%left '>' GEQ '<' LEQ
+%left '+' '-'
+%left '*' '/'
+%right '&' '^' '!' UMINUS
+
 
 %%
 
-/* WRITEME: Put your code from Project 3 here */
+Program     : Procedures1
+            {
+            ast = new ProgramImpl($1.u_proc_list);
+            } 
+            ;
 
-all : USELESS;
+Procedures1 : Procedures Procedure
+            {
+            $1.u_proc_list->push_back($2.u_proc);
+            $$ = $1;
+            }
+            ;
+        
+Procedures  : Procedures Procedure
+            {
+                $1.u_proc_list->push_back($2.u_proc);
+                $$ = $1;
+            } 
+            | %empty
+            {
+                $$.u_proc_list = new std::list<Proc_ptr>(); 
+            }
+            ;
+
+Procedure   : PROC Identifier '(' PList ')' RET Type '{' PBody '}'
+            {
+                $$.u_proc = new ProcImpl($2.u_symname, $4.u_decl_list, 
+                $7.u_type, $9.u_procedure_block);
+            }
+            ;
+
+/*Parameter List*/
+PList       : PList ';' TypeList
+            {
+                $1.u_decl_list->push_back($3.u_decl); 
+                $$ = $1;
+            }
+            | PList TypeList
+            {
+                $1.u_decl_list->push_back($2.u_decl);
+                $$ = $1;
+            }
+            | %empty
+            {
+                $$.u_decl_list = new std::list<Decl_ptr>();
+            }
+            ;
+
+/* For a list of identifiers to the left of the type declaration */
+//Returns u_decl
+
+TypeList    : TList Identifier ':' Type
+            {
+              $1.u_symname_list->push_back($2.u_symname);
+              $$.u_decl = new DeclImpl($1.u_symname_list, $4.u_type);
+            }
+            ;
+
+
+/* For variable declarations of similar Types*/
+TList       : TList Identifier ','
+            {
+                $1.u_symname_list->push_back($2.u_symname);
+                $$ = $1;
+            }
+            | %empty
+            {
+              $$.u_symname_list = new std::list<SymName_ptr>();
+            }
+            ;
+
+//Procedure Body
+PBody       : Procedures VarDec Statements Return
+            {//Procedures, Variable Declarations, Statements
+            $$.u_procedure_block = new Procedure_blockImpl($1.u_proc_list, 
+            $2.u_decl_list,$3.u_stat_list, $4.u_return_stat);
+            }
+            ;
+
+//Same As PList with extended type BType
+VarDec      : VarDec VAR TypeListB ';'
+            {
+              $1.u_decl_list->push_back($3.u_decl);
+              $$ = $1;
+            }
+            | %empty
+            {
+              $$.u_decl_list = new std::list<Decl_ptr>();
+            }
+            ;
+
+TypeListB   : TListB Identifier ':' BType
+            {
+              $1.u_symname_list->push_back($2.u_symname);
+              $$.u_decl = new DeclImpl($1.u_symname_list, $4.u_type);
+            }
+
+TListB      : TListB Identifier ','
+            {
+                $1.u_symname_list->push_back($2.u_symname);
+                $$ = $1;
+            }
+            | %empty
+            {
+                $$.u_symname_list = new std::list<SymName_ptr>();
+            }
+
+
+Statements  : Statements Assign ';'//Assignment Statement
+            {
+                $1.u_stat_list->push_back($2.u_stat);
+                $$ = $1;
+            }
+            | Statements StrAssign ';'//String Assignment
+            {
+                $1.u_stat_list->push_back($2.u_stat);
+                $$ = $1;
+            }
+            | Statements FunctionCall ';'//FunctionCall
+            {
+                $1.u_stat_list->push_back($2.u_stat);
+                $$ = $1;
+            }
+            | Statements IfS //If Statement
+            {
+                $1.u_stat_list->push_back($2.u_stat);
+                $$ = $1;
+            }
+            | Statements IfES //IF-Else Statement
+            {
+                $1.u_stat_list->push_back($2.u_stat);
+                $$ = $1;
+            }
+            | Statements WhileS //While Statement
+            {
+                $1.u_stat_list->push_back($2.u_stat);
+                $$ = $1;
+            }
+            | Statements CodeB //Code Block
+            {
+                $1.u_stat_list->push_back($2.u_stat);
+                $$ = $1;
+            }
+            | %empty
+            {
+                $$.u_stat_list = new std::list<Stat_ptr>();
+            }
+            ;
+
+/*********************Assign Statements************************************/
+
+//String Assignments
+StrAssign   : LHSVar '=' StrLit
+            {
+                $$.u_stat = new StringAssignment($1.u_lhs, $3.u_stringprimitive);
+            }
+            ;
+
+//Regular Assignments
+Assign      : LHSVar '=' Expr
+            {
+                $$.u_stat = new Assignment($1.u_lhs, $3.u_expr);
+            }
+            | LHSDeref '=' Expr
+            {
+                $$.u_stat = new Assignment($1.u_lhs, $3.u_expr);
+            }
+            | LHSArrayE '=' Expr
+            {
+                $$.u_stat = new Assignment($1.u_lhs, $3.u_expr);
+            } 
+            ;
+
+/********************************LHS Wrappers**************************/
+
+
+LHSVar      : Identifier
+            {
+                $$.u_lhs = new Variable($1.u_symname);
+            }
+            ;
+
+LHSDeref    : '^' LHSVar
+            {
+                $$.u_lhs = new DerefVariable($1.u_symname);
+            }
+            ;
+
+LHSArrayE   : Identifier '[' Expr ']'
+            {
+                $$.u_lhs = new ArrayElement($1.u_symname, $3.u_expr);
+            }
+            ;
+
+
+
+
+
+/******************************Non Assignment Statements***************/
+
+CodeB       : NestedCodeB
+            {
+                $$.u_stat = new CodeBlock($1.u_nested_block);
+            }
+            ;
+        
+NestedCodeB : '{' VarDec Statements '}'
+            {
+                $$.u_nested_block = new Nested_blockImpl($2.u_decl_list, $3.u_stat_list);
+            }
+            ;
+
+
+FunctionCall: LHSVar  '=' Identifier '(' ExprList Expr ')'
+            {
+                $5.u_expr_list->push_back($6.u_expr);
+                $$.u_stat = new Call($1.u_lhs, $3.u_symname, $5.u_expr_list);
+            }
+            | LHSVar '=' Identifier '(' ')'
+            {
+                //TODO Check to see if this works
+                $$.u_stat = new Call($1.u_lhs, $3.u_symname, new std::list<Expr_ptr>());
+            }
+            ;
+
+IfS         : IF '(' Expr ')' NestedCodeB
+            {
+                $$.u_stat = new IfNoElse($3.u_expr, $5.u_nested_block);
+        
+            }
+            ;
+
+IfES        : IF '(' Expr ')' NestedCodeB ELSE NestedCodeB
+            {
+                $$.u_stat = new IfWithElse($3.u_expr, $5.u_nested_block, $7.u_nested_block);
+            }
+            ;
+
+WhileS      : WHILE '(' Expr ')' NestedCodeB
+            {
+                $$.u_stat = new WhileLoop($3.u_expr, $5.u_nested_block);
+            }
+            ;
+
+Return      : RET Expr ';'
+            {
+                $$.u_return_stat = new Return($2.u_expr);
+            }
+            ;
+
+Expr        : Expr AND Expr //Expressions with Binary Operators
+            {
+                $$.u_expr = new And($1.u_expr, $3.u_expr);
+            }
+            | Expr GEQ Expr
+            {
+                $$.u_expr = new Gteq($1.u_expr, $3.u_expr);
+            }
+            | Expr LEQ Expr
+            {
+                $$.u_expr = new Lteq($1.u_expr, $3.u_expr);
+            }
+            | Expr NEQ Expr
+            {
+                $$.u_expr = new Noteq($1.u_expr, $3.u_expr);
+            }
+            | Expr OR Expr
+            {
+                $$.u_expr = new Or($1.u_expr, $3.u_expr);
+            }
+            | Expr EQ Expr
+            {
+                $$.u_expr = new Compare($1.u_expr, $3.u_expr);
+            }
+            | Expr '<' Expr
+            {
+                $$.u_expr = new Lt($1.u_expr, $3.u_expr);
+            }
+            | Expr '>' Expr
+            {
+                $$.u_expr = new Gt($1.u_expr, $3.u_expr);
+            }
+            | Expr '-' Expr
+            {
+                $$.u_expr = new Minus($1.u_expr, $3.u_expr);
+            }
+            | Expr '*' Expr
+            {
+                $$.u_expr = new Times($1.u_expr, $3.u_expr);
+            }
+            | Expr '+' Expr
+            {
+                $$.u_expr = new Plus($1.u_expr, $3.u_expr);
+            }
+            | Expr '/' Expr
+            {
+                $$.u_expr = new Div($1.u_expr, $3.u_expr);
+            }
+            | '&' LHSVar  // Expressions with unary operators
+            {
+                $$.u_expr = new AddressOf($2.u_lhs);
+            }
+            | '&' LHSArrayE
+            {
+                $$.u_expr = new AddressOf($2.u_lhs);
+            }
+            | '!' Expr
+            {
+                $$.u_expr = new Not($2.u_expr);
+            }
+            | '-' Expr %prec UMINUS
+            {
+                $$.u_expr = new Uminus($2.u_expr);
+            }
+            | '^' Expr
+            {
+                $$.u_expr = new Deref($2.u_expr);
+            }
+            | Literal {$$ = $1;}
+            | '(' Expr ')' { $$=$2;} 
+            | '|' EIdent '|'
+            {
+                $$.u_expr = new AbsoluteValue($2.u_expr);
+            }
+            | EIdent {$$ = $1;}
+            | Identifier '[' Expr ']'
+            {
+                $$.u_expr = new ArrayAccess($1.u_symname, $3.u_expr);
+            }
+            ;
+
+Literal     : V_BOOL
+            {
+                $$.u_primitive = new Primitive(yylval.u_base_int);
+                $$.u_expr = new BoolLit($$.u_primitive);
+            }
+            | Character {$$ = $1;}
+            | Integer {$$ = $1;}
+            | N
+            {
+                $$.u_primitive = new Primitive(yylval.u_base_int);
+                $$.u_expr = new IntLit($$.u_primitive);
+            }
+            ;
+
+ExprList    : ExprList Expr ','
+            {
+                $1.u_expr_list->push_back($2.u_expr);
+                $$ = $1;
+            }
+            | %empty
+            {
+                $$.u_expr_list = new std::list<Expr_ptr>();
+            }
+            ;
+
+
+/*Body Type which just adds string types*/
+BType       : Type {$$ = $1;}
+            | T_STRING '[' StringDecInt ']'
+            {
+                $$.u_type = new TString($3.u_primitive);
+            }
+            ;
+
+StringDecInt: V_INTEGER
+            {
+                $$.u_primitive = new Primitive(yylval.u_base_int);
+            } 
+            ;
+
+//Types Allowed both in ParameterLists and Procedure Bodies
+Type        : T_INT {$$.u_type = new TInteger();}
+            | T_BOOL {$$.u_type = new TBoolean();}
+            | T_CHAR {$$.u_type = new TCharacter();}
+            | T_INTP {$$.u_type = new TIntPtr();}
+            | T_CHARP {$$.u_type = new TCharPtr();}
+            ;
+
+
+
+/*************************Literals*********************************/
+
+
+EIdent      : Identifier
+            {
+                $$.u_expr = new Ident($1.u_symname);
+            }
+            ;
+
+Identifier  : V_IDENTIFIER 
+            {
+            $$.u_symname = new SymName(yylval.u_base_charptr);
+            }
+            ;
+Character   :  V_CHAR
+            {
+                $$.u_primitive = new Primitive(yylval.u_base_int);
+                $$.u_expr = new CharLit($$.u_primitive);
+            }
+Integer     : V_INTEGER
+            {
+               $$.u_primitive = new Primitive(yylval.u_base_int);
+               $$.u_expr = new IntLit($$.u_primitive);
+            }
+StrLit      : V_STRING
+            {
+                $$.u_stringprimitive = new StringPrimitive(yylval.u_base_charptr);
+            }
+            ;
+
+/* For a list of identifiers to the left of the type declaration */
 
 %%
 

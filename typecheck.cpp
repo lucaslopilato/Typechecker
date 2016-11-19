@@ -8,7 +8,7 @@
 #include "assert.h"
 
 // WRITEME: The default attribute propagation rule
-#define default_rule(X) X
+#define default_rule(X) (X->visit_children(typecheck))
 
 #include <typeinfo>
 
@@ -126,6 +126,9 @@ class Typecheck : public Visitor
     // Check that there is one and only one main
     void check_for_one_main(ProgramImpl* p)
     {
+        if(!m_st->exist(strdup("Main"))){
+            t_error(no_main, p->m_attribute);
+        }
     }
 
     // Create a symbol for the procedure and check there is none already
@@ -248,6 +251,8 @@ class Typecheck : public Visitor
 
     void visitProgramImpl(ProgramImpl* p)
     {
+       
+       check_for_one_main(p); 
     }
 
     void visitProcImpl(ProcImpl* p)

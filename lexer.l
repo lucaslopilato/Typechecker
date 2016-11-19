@@ -7,7 +7,7 @@
     #include "ast.hpp"
     #include "parser.hpp"
 
-    /* void yyerror(const char *); */
+    void yyerror(const char *);
 %}
 
 /** WRITE ME:
