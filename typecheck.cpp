@@ -140,7 +140,6 @@ class Typecheck : public Visitor
         
         //Initialize Base Symbol Attributes
         s = new Symbol();
-        std::cout << "proc->m_symname->spelling() :"<< p->m_symname->spelling()<<std::endl;
         name = strdup(p->m_symname->spelling());
         s->m_basetype = bt_procedure;
 
@@ -181,11 +180,14 @@ class Typecheck : public Visitor
     // Check that the return statement of a procedure has the appropriate type
     void check_proc(ProcImpl *p)
     {
+        //Type m_type
+        //if(!
     }
 
     // Check that the declared return type is not an array
     void check_return(Return *p)
     {
+
     }
 
     // Check that function being called exists and that types of arguments
@@ -294,7 +296,8 @@ class Typecheck : public Visitor
 
     void visitProcImpl(ProcImpl* p)
     {
-       default_rule(p); 
+       default_rule(p);
+       check_proc(p); 
        add_proc_symbol(p);  
     }
 
@@ -343,7 +346,8 @@ class Typecheck : public Visitor
 
     void visitReturn(Return* p)
     {
-       default_rule(p);       
+       default_rule(p);
+       check_return(p);       
     }
 
     void visitIfNoElse(IfNoElse* p)
@@ -360,12 +364,15 @@ class Typecheck : public Visitor
 
     void visitWhileLoop(WhileLoop* p)
     {
-       default_rule(p);       
+       default_rule(p);
+       check_pred_while(p);       
     }
 
     void visitCodeBlock(CodeBlock *p) 
     {
-       default_rule(p);       
+       m_st->open_scope();
+       default_rule(p);   
+       m_st->close_scope(); 
     }
 
     void visitTInteger(TInteger* p)
