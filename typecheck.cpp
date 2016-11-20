@@ -300,7 +300,8 @@ class Typecheck : public Visitor
 
     void visitCall(Call* p)
     {
-       default_rule(p);       
+       default_rule(p);
+       check_call(p);       
     }
 
     void visitNested_blockImpl(Nested_blockImpl* p)
@@ -325,12 +326,14 @@ class Typecheck : public Visitor
 
     void visitAssignment(Assignment* p)
     {
-       default_rule(p);       
+       default_rule(p);
+       check_assignment(p);       
     }
 
     void visitStringAssignment(StringAssignment *p)
     {
-       default_rule(p);       
+       default_rule(p);
+       check_string_assignment(p);   
     }
 
     void visitIdent(Ident* p)
@@ -345,12 +348,14 @@ class Typecheck : public Visitor
 
     void visitIfNoElse(IfNoElse* p)
     {
-       default_rule(p);       
+       default_rule(p);
+       check_pred_if(p->m_expr); //Check if this is the proper func to call
     }
 
     void visitIfWithElse(IfWithElse* p)
     {
-       default_rule(p);       
+       default_rule(p);     
+       check_pred_if(p->m_expr);  
     }
 
     void visitWhileLoop(WhileLoop* p)
@@ -401,77 +406,93 @@ class Typecheck : public Visitor
 
     void visitAnd(And* p)
     {
-       default_rule(p);       
+       default_rule(p);
+       checkset_boolexpr(p, p->m_expr_1, p->m_expr_2);       
     }
 
     void visitDiv(Div* p)
     {
-       default_rule(p);       
+       default_rule(p);
+       checkset_arithexpr(p, p->m_expr_1, p->m_expr_2);
     }
 
+    //TODO Figure out what this Compare is
     void visitCompare(Compare* p)
     {
-       default_rule(p);       
+       default_rule(p);      
+ 
     }
 
     void visitGt(Gt* p)
     {
        default_rule(p);       
+       checkset_relationalexpr(p, p->m_expr_1, p->m_expr_2);
     }
 
     void visitGteq(Gteq* p)
     {
        default_rule(p);       
+       checkset_relationalexpr(p, p->m_expr_1, p->m_expr_2);
     }
 
     void visitLt(Lt* p)
     {
        default_rule(p);       
+       checkset_relationalexpr(p, p->m_expr_1, p->m_expr_2);
     }
 
     void visitLteq(Lteq* p)
     {
        default_rule(p);       
+       checkset_relationalexpr(p, p->m_expr_1, p->m_expr_2);
     }
 
     void visitMinus(Minus* p)
     {
        default_rule(p);       
+       checkset_arithexpr_or_pointer(p, p->m_expr_1, p->m_expr_2);
     }
 
     void visitNoteq(Noteq* p)
     {
        default_rule(p);       
+       checkset_equalityexpr(p, p->m_expr_1, p->m_expr_2);
     }
 
     void visitOr(Or* p)
     {
-       default_rule(p);       
+       default_rule(p);
+       checkset_boolexpr(p, p->m_expr_1, p->m_expr_2);      
     }
 
     void visitPlus(Plus* p)
     {
        default_rule(p);       
+       checkset_arithexpr_or_pointer(p, p->m_expr_1, p->m_expr_2);
     }
 
     void visitTimes(Times* p)
     {
        default_rule(p);       
+       checkset_arithexpr(p, p->m_expr_1, p->m_expr_2);
     }
 
     void visitNot(Not* p)
     {
        default_rule(p);       
+       checkset_not(p, p->m_expr);       
     }
 
     void visitUminus(Uminus* p)
     {
        default_rule(p);       
+       checkset_uminus(p, p->m_expr);       
     }
 
     void visitArrayAccess(ArrayAccess* p)
     {
-       default_rule(p);       
+       default_rule(p);
+       check_array_access(p);
     }
 
     void visitIntLit(IntLit* p)
@@ -497,31 +518,37 @@ class Typecheck : public Visitor
     void visitAbsoluteValue(AbsoluteValue* p)
     {
        default_rule(p);       
+       checkset_absolute_value(p, p->m_expr);       
     }
 
     void visitAddressOf(AddressOf* p)
     {
        default_rule(p);       
+       checkset_addressof(p, p->m_lhs);       
     }
 
     void visitVariable(Variable* p)
     {
-       default_rule(p);       
+       default_rule(p);    
+       checkset_variable(p);   
     }
 
     void visitDeref(Deref* p)
     {
        default_rule(p);       
+       checkset_deref_expr(p, p->m_expr);       
     }
 
     void visitDerefVariable(DerefVariable* p)
     {
        default_rule(p);       
+       checkset_deref_lhs(p);       
     }
 
     void visitArrayElement(ArrayElement* p)
     {
-       default_rule(p);       
+       default_rule(p);
+       check_array_element(p); 
     }
 
     // Special cases
