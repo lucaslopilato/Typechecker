@@ -120,6 +120,7 @@ class Typecheck : public Visitor
     // Helpers
     // WRITEME: You might want write some hepler functions.
 
+
     const char * lhs_to_id (Lhs* lhs){
         Variable *v = dynamic_cast<Variable*>(lhs);
         if(v) {
@@ -189,11 +190,11 @@ class Typecheck : public Visitor
                 s->m_arg_type.push_back((*iter)->m_attribute.m_basetype);
              }
         }
-        if(!m_st->insert(name, s)){ //Check if symbol is not already present
+        if(!m_st->insert_in_parent_scope(name, s)){ 
+                //Check if symbol is not already present
                 this->t_error(dup_proc_name, p->m_attribute);
         }
 
-        //Symbol* check = m_st
     }
 
     // Add symbol table information for all the declarations following
@@ -256,6 +257,9 @@ class Typecheck : public Visitor
             //Run through each type and make sure they are the same
             std::vector<Basetype>::iterator sym = s->m_arg_type.begin();
 
+
+            std::cout << "test" << std::endl;
+                //std::cout << "Comparing types: " << (*iter)->m_attribute.m_basetype << "<" << (*sym)<<std::endl;
            for(std::list<Expr_ptr>::iterator iter = p->m_expr_list->begin();
             iter != p->m_expr_list->end(); ++iter)
             {
@@ -296,8 +300,13 @@ class Typecheck : public Visitor
         }
     }
 
+    //TODO do str[2] = 'a'
+
     void check_string_assignment(StringAssignment* p)
     {
+        if(p->m_lhs->m_attribute.m_basetype != bt_string){
+            this->t_error(incompat_assign, p->m_attribute);
+        }
     }
 
     void check_array_access(ArrayAccess* p)
@@ -319,48 +328,116 @@ class Typecheck : public Visitor
     // For checking boolean operations(and, or ...)
     void checkset_boolexpr(Expr* parent, Expr* child1, Expr* child2)
     {
+        if(child1->m_attribute.m_basetype != bt_boolean ||
+            child1->m_attribute.m_basetype != bt_boolean){
+            t_error(expr_type_err, parent->m_attribute);
+        }
     }
 
     // For checking arithmetic expressions(plus, times, ...)
     void checkset_arithexpr(Expr* parent, Expr* child1, Expr* child2)
     {
+        //If Either Expressions are not integers, return an error
+        if(child1->m_attribute.m_basetype != bt_integer ||
+           child2->m_attribute.m_basetype != bt_integer){
+            t_error(expr_type_err, parent->m_attribute);
+        }
+
     }
 
     // Called by plus and minus: in these cases we allow pointer arithmetics
     void checkset_arithexpr_or_pointer(Expr* parent, Expr* child1, Expr* child2)
     {
+        Basetype c1 = child1->m_attribute.m_basetype;
+        Basetype c2 = child2->m_attribute.m_basetype;
+        //If One is a charptr and one is an integer, return (accept)
+        if(c1 == bt_integer && c2 == bt_integer){
+            return;
+        }
+        if(c1 == bt_charptr && c2 == bt_integer){
+            return;
+        }
+        else if(c1 == bt_integer && c2 == bt_charptr){
+            return;
+        }
+        else{
+            this->t_error(expr_pointer_arithmetic_err, parent->m_attribute);
+        }
     }
 
     // For checking relational(less than , greater than, ...)
     void checkset_relationalexpr(Expr* parent, Expr* child1, Expr* child2)
     {
+        if(child1->m_attribute.m_basetype != bt_integer ||
+           child2->m_attribute.m_basetype != bt_integer)
+        {
+           this->t_error(expr_type_err, parent->m_attribute);   
+        }
     }
 
     // For checking equality ops(equal, not equal)
     void checkset_equalityexpr(Expr* parent, Expr* child1, Expr* child2)
     {
+        Basetype c1 = child1->m_attribute.m_basetype;
+        Basetype c2 = child2->m_attribute.m_basetype;
+        //If the types are not the same, must determine if pointers present
+        if(c1 != c2){
+            //If nullptr is used with valid pointers, ok
+            if(c1 == bt_ptr && (c2 == bt_intptr || c2 == bt_charptr)){
+                return;
+            }
+            //Same case as above but sides switched
+            else if(c2 == bt_ptr && (c1 == bt_intptr || c1 == bt_charptr)){
+                return;
+            }
+            
+            //If no valid expression, throw an error
+            this->t_error(expr_type_err, parent->m_attribute);
+        }
     }
 
     // For checking not
     void checkset_not(Expr* parent, Expr* child)
     {
+        //Not must be boolean expression
+        if(child->m_attribute.m_basetype != bt_boolean){
+            this->t_error(expr_type_err, parent->m_attribute);
+        }
     }
 
     // For checking unary minus
     void checkset_uminus(Expr* parent, Expr* child)
     {
+        if(child->m_attribute.m_basetype != bt_integer){
+            this->t_error(expr_type_err, parent->m_attribute);
+        }
     }
 
+    //Absolute value can only be applied to integer or string variables
     void checkset_absolute_value(Expr* parent, Expr* child)
     {
+        Basetype bt = child->m_attribute.m_basetype;
+        if(bt != bt_integer && bt != bt_string){
+            this->t_error(expr_type_err, parent->m_attribute);
+        }
     }
 
+    //Can only be used on itegers, chars, and indexed strings
     void checkset_addressof(Expr* parent, Lhs* child)
     {
+        Basetype bt = child->m_attribute.m_basetype;
+        if(bt != bt_integer && bt != bt_char){
+            this->t_error(expr_addressof_error, parent->m_attribute);
+        }
     }
 
     void checkset_deref_expr(Deref* parent,Expr* child)
     {
+        Basetype bt = child->m_attribute.m_basetype;
+        if(bt != bt_intptr && bt != bt_charptr){
+            this->t_error(invalid_deref, parent->m_attribute);
+        }
+        
     }
 
     // Check that if the right-hand side is an lhs, such as in case of
@@ -386,11 +463,14 @@ class Typecheck : public Visitor
     void visitProgramImpl(ProgramImpl* p)
     {
        default_rule(p);       
-       check_for_one_main(p); 
+       check_for_one_main(p);
     }
 
     void visitProcImpl(ProcImpl* p)
     {
+        //Open New Scope
+        this->m_st->open_scope();    
+    
         //Visit Arguments to define types for the symbol
        for(std::list<Decl_ptr>::iterator iter = p->m_decl_list->begin(); 
         iter != p->m_decl_list->end(); ++iter)
@@ -414,8 +494,12 @@ class Typecheck : public Visitor
 
     void visitCall(Call* p)
     {
+       std::cout << "test";
        default_rule(p);
-       check_call(p);       
+       check_call(p);     
+       
+       //Symbol* sym = this->m_st->lookup(strdup(p->m_symname->spelling())); 
+       //p->m_attribute.m_basetype = sym->m_return_type;
     }
 
     void visitNested_blockImpl(Nested_blockImpl* p)
@@ -427,7 +511,6 @@ class Typecheck : public Visitor
 
     void visitProcedure_blockImpl(Procedure_blockImpl* p)
     {
-       m_st->open_scope();
        default_rule(p);  
        m_st->close_scope();     
     }
@@ -532,19 +615,23 @@ class Typecheck : public Visitor
     void visitAnd(And* p)
     {
        default_rule(p);
-       checkset_boolexpr(p, p->m_expr_1, p->m_expr_2);       
+       checkset_boolexpr(p, p->m_expr_1, p->m_expr_2);      
+       p->m_attribute.m_basetype = bt_boolean; 
     }
 
     void visitDiv(Div* p)
     {
        default_rule(p);
        checkset_arithexpr(p, p->m_expr_1, p->m_expr_2);
+       p->m_attribute.m_basetype = bt_integer; 
     }
 
     //TODO Figure out what this Compare is
     void visitCompare(Compare* p)
     {
-       default_rule(p);      
+       default_rule(p);
+       checkset_equalityexpr(p,p->m_expr_1,p->m_expr_2);
+       p->m_attribute.m_basetype = bt_boolean;      
  
     }
 
@@ -552,72 +639,112 @@ class Typecheck : public Visitor
     {
        default_rule(p);       
        checkset_relationalexpr(p, p->m_expr_1, p->m_expr_2);
+       p->m_attribute.m_basetype = bt_boolean; 
     }
 
     void visitGteq(Gteq* p)
     {
        default_rule(p);       
        checkset_relationalexpr(p, p->m_expr_1, p->m_expr_2);
+       p->m_attribute.m_basetype = bt_boolean; 
     }
 
     void visitLt(Lt* p)
     {
        default_rule(p);       
        checkset_relationalexpr(p, p->m_expr_1, p->m_expr_2);
+       p->m_attribute.m_basetype = bt_boolean; 
     }
 
     void visitLteq(Lteq* p)
     {
        default_rule(p);       
        checkset_relationalexpr(p, p->m_expr_1, p->m_expr_2);
+       p->m_attribute.m_basetype = bt_boolean; 
     }
 
     void visitMinus(Minus* p)
     {
        default_rule(p);       
        checkset_arithexpr_or_pointer(p, p->m_expr_1, p->m_expr_2);
+       //Save basetype pointers
+       Basetype c1 = p->m_expr_1->m_attribute.m_basetype;
+       Basetype c2 = p->m_expr_2->m_attribute.m_basetype;
+
+        //If c1 or c2 are intptrs, new type is intptr
+       if( c1 == bt_intptr || c2 == bt_intptr){
+            p->m_attribute.m_basetype = bt_intptr;
+        }
+        else if( c1 == bt_charptr || c2 == bt_charptr){
+            p->m_attribute.m_basetype = bt_charptr;
+        }
+        else{
+            p->m_attribute.m_basetype = bt_integer;
+        }
     }
 
     void visitNoteq(Noteq* p)
     {
        default_rule(p);       
        checkset_equalityexpr(p, p->m_expr_1, p->m_expr_2);
+       p->m_attribute.m_basetype = bt_boolean;
     }
 
     void visitOr(Or* p)
     {
        default_rule(p);
-       checkset_boolexpr(p, p->m_expr_1, p->m_expr_2);      
+       checkset_boolexpr(p, p->m_expr_1, p->m_expr_2);     
+       p->m_attribute.m_basetype = bt_boolean;
     }
 
     void visitPlus(Plus* p)
     {
        default_rule(p);       
        checkset_arithexpr_or_pointer(p, p->m_expr_1, p->m_expr_2);
+        //Save basetype pointers
+       Basetype c1 = p->m_expr_1->m_attribute.m_basetype;
+       Basetype c2 = p->m_expr_2->m_attribute.m_basetype;
+
+        //If c1 or c2 are intptrs, new type is intptr
+       if( c1 == bt_intptr || c2 == bt_intptr){
+            p->m_attribute.m_basetype = bt_intptr;
+        }
+        else if( c1 == bt_charptr || c2 == bt_charptr){
+            p->m_attribute.m_basetype = bt_charptr;
+        }
+        else{
+            p->m_attribute.m_basetype = bt_integer;
+        }
+
     }
 
     void visitTimes(Times* p)
     {
        default_rule(p);       
        checkset_arithexpr(p, p->m_expr_1, p->m_expr_2);
+       p->m_attribute.m_basetype = bt_integer;
     }
 
     void visitNot(Not* p)
     {
        default_rule(p);       
        checkset_not(p, p->m_expr);       
+       p->m_attribute.m_basetype = bt_boolean;
     }
 
     void visitUminus(Uminus* p)
     {
        default_rule(p);       
        checkset_uminus(p, p->m_expr);       
+       p->m_attribute.m_basetype = bt_integer;
     }
 
     void visitArrayAccess(ArrayAccess* p)
     {
        default_rule(p);
        check_array_access(p);
+        //TODO might not need
+       p->m_attribute.m_basetype = bt_char;
     }
 
     void visitIntLit(IntLit* p)
@@ -641,18 +768,31 @@ class Typecheck : public Visitor
     void visitNullLit(NullLit* p)
     {
        default_rule(p);       
+        p->m_attribute.m_basetype = bt_ptr;
     }
 
     void visitAbsoluteValue(AbsoluteValue* p)
     {
        default_rule(p);       
        checkset_absolute_value(p, p->m_expr);       
+       p->m_attribute.m_basetype = bt_integer;
     }
 
     void visitAddressOf(AddressOf* p)
     {
        default_rule(p);       
-       checkset_addressof(p, p->m_lhs);       
+       checkset_addressof(p, p->m_lhs);      
+        
+       //Find the Basetype of the variable being addressed
+       Symbol* s = this->m_st->lookup(strdup(lhs_to_id(p->m_lhs)));
+       Basetype bt = s->m_basetype;
+
+       if(bt == bt_integer){
+            p->m_attribute.m_basetype = bt_intptr;
+        } 
+        else if(bt == bt_char){
+            p->m_attribute.m_basetype = bt_charptr;
+        }
     }
 
     void visitVariable(Variable* p)
@@ -667,28 +807,47 @@ class Typecheck : public Visitor
     void visitDeref(Deref* p)
     {
        default_rule(p);       
-       checkset_deref_expr(p, p->m_expr);       
+       checkset_deref_expr(p, p->m_expr);
+
+       Basetype bt = p->m_expr->m_attribute.m_basetype;
+       if(bt == bt_intptr){
+            p->m_attribute.m_basetype = bt_integer;
+        }
+        else if(bt == bt_charptr){
+            p->m_attribute.m_basetype = bt_char;
+        }
+              
     }
 
     void visitDerefVariable(DerefVariable* p)
     {
        default_rule(p);       
        checkset_deref_lhs(p);       
+       
+        //Lookup type of the symbol being dereferenced
+        Symbol* s = this->m_st->lookup(strdup(p->m_symname->spelling()));
+        Basetype bt = s->m_basetype;
+    
+        if(bt == bt_intptr){
+            p->m_attribute.m_basetype = bt_integer;
+        }
+        else if(bt == bt_charptr){
+            p->m_attribute.m_basetype = bt_char;
+        }
+        
     }
 
     void visitArrayElement(ArrayElement* p)
     {
        default_rule(p);
        check_array_element(p);
-       //std::cout << "Visited aRRAY eLEmen"<< std::endl; 
+       p->m_attribute.m_basetype = bt_char;
     }
 
     // Special cases
     void visitPrimitive(Primitive* p) {}
     void visitSymName(SymName* p) {}
-    void visitStringPrimitive(StringPrimitive* p) {
-        //std::cout << "Visited String Primitive \n";
-    }
+    void visitStringPrimitive(StringPrimitive* p) {}
 };
 
 
