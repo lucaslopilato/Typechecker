@@ -166,6 +166,7 @@ class Typecheck : public Visitor
         name = strdup(p->m_symname->spelling());
         s->m_basetype = bt_procedure;
 
+        //this->m_st->dump(stdout);
         //Check to see if procedure already exists at the same scope
         //SymScope* currentScope = this->m_st->get_scope();
         //Symbol* exists = this->m_st->lookup(currentScope, name);
@@ -177,15 +178,22 @@ class Typecheck : public Visitor
         s->m_return_type = p->m_type->m_attribute.m_basetype;
         s->m_arg_type = std::vector<Basetype>();
         
+        //For Visit Each Declaration
         for(std::list<Decl_ptr>::iterator iter = p->m_decl_list->begin();
             iter != p->m_decl_list->end(); ++iter)
         {
-            s->m_arg_type.push_back((*iter)->m_attribute.m_basetype);
-            
+             DeclImpl* current = dynamic_cast<DeclImpl*>(*iter);
+             //Push number of types per variable declared
+             if(current)
+             for(int i=0; i<(*current).m_symname_list->size(); i++){
+                s->m_arg_type.push_back((*iter)->m_attribute.m_basetype);
+             }
         }
         if(!m_st->insert(name, s)){ //Check if symbol is not already present
                 this->t_error(dup_proc_name, p->m_attribute);
         }
+
+        //Symbol* check = m_st
     }
 
     // Add symbol table information for all the declarations following
@@ -228,21 +236,37 @@ class Typecheck : public Visitor
     // and return values are consistent
     void check_call(Call *p)
     {
-        if(!this->m_st->exist(strdup(p->m_symname->spelling()))){
+        char* pName = strdup(p->m_symname->spelling());
+        //Check if the procedure is defined
+        if(!this->m_st->exist(pName)){
             this->t_error(proc_undef, p->m_attribute);
+        }
+        //Check if the lhs is defined
+        else if(!this->m_st->exist(strdup(lhs_to_id(p->m_lhs)))){
+            this->t_error(var_undef, p->m_attribute);
         }
         else{
             //Lookup the symbol to reference
-            Symbol * s = this->m_st->lookup(lhs_to_id(p->m_lhs));
+            Symbol * s = this->m_st->lookup(pName);
 
             //Make sure number of arguments provided matches symbol
             if(s->m_arg_type.size() != p->m_expr_list->size()){
                 this->t_error(narg_mismatch, p->m_attribute);
             }
 
-        
+            //Run through each type and make sure they are the same
+            std::vector<Basetype>::iterator sym = s->m_arg_type.begin();
 
-          
+           for(std::list<Expr_ptr>::iterator iter = p->m_expr_list->begin();
+            iter != p->m_expr_list->end(); ++iter)
+            {
+                //Compare BaseTypes of basetype to Expression
+                if((*iter)->m_attribute.m_basetype != (*sym)){
+                    this->t_error(arg_type_mismatch, p->m_attribute);
+                }
+                //Advance Symbol Arguments
+                sym++;
+            }
 
             
         }
@@ -353,9 +377,25 @@ class Typecheck : public Visitor
 
     void visitProcImpl(ProcImpl* p)
     {
-       default_rule(p);
+        //Visit Arguments to define types for the symbol
+       for(std::list<Decl_ptr>::iterator iter = p->m_decl_list->begin(); 
+        iter != p->m_decl_list->end(); ++iter)
+        {
+            (*iter)->accept(this);
+        }
+
+       //Make sure the procedure properly defined 
        check_proc(p); 
-       add_proc_symbol(p);  
+        
+       //Add the new procedure symbols to the symtab
+       add_proc_symbol(p); 
+
+       //Call accept on all children besides the arguments 
+       p->m_symname->accept(this);
+       p->m_type->accept(this);
+       p->m_procedure_block->accept(this);
+
+
     }
 
     void visitCall(Call* p)
@@ -373,18 +413,18 @@ class Typecheck : public Visitor
 
     void visitProcedure_blockImpl(Procedure_blockImpl* p)
     {
-       
        m_st->open_scope();
-        //std::cout <<"open new scope\n";
        default_rule(p);  
        m_st->close_scope();     
-        //std::cout << "closing scope\n";
     }
 
     void visitDeclImpl(DeclImpl* p)
     {
        default_rule(p);
-       add_decl_symbol(p); 
+       p->m_attribute.m_basetype = p->m_type->m_attribute.m_basetype;
+       add_decl_symbol(p);
+    
+               
     }
 
     void visitAssignment(Assignment* p)
