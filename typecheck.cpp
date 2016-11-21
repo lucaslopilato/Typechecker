@@ -207,7 +207,6 @@ class Typecheck : public Visitor
             name = strdup((*iter)->spelling());
             s = new Symbol();
             s->m_basetype = p->m_type->m_attribute.m_basetype;
-            //std::cout << "Adding symbol "<< name<< " , " << s->m_basetype<< std::endl;
 
             if(!m_st->insert(name, s)){ //Check if symbol is not already present
                 this->t_error(dup_var_name, p->m_attribute);
@@ -275,6 +274,9 @@ class Typecheck : public Visitor
     // For checking that this expressions type is boolean used in if/else
     void check_pred_if(Expr* p)
     {
+        if(p->m_attribute.m_basetype != bt_boolean){
+            this->t_error(ifpred_err, p->m_attribute);
+        }
     }
 
     // For checking that this expressions type is boolean used in while
