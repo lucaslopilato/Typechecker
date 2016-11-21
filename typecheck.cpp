@@ -287,6 +287,8 @@ class Typecheck : public Visitor
         }
     }
 
+
+    //TODO might need symtab lookup not LHS lookup
     void check_assignment(Assignment* p)
     {
         if(p->m_lhs->m_attribute.m_basetype != p->m_expr->m_attribute.m_basetype){
@@ -296,13 +298,18 @@ class Typecheck : public Visitor
 
     void check_string_assignment(StringAssignment* p)
     {
-        if(!m_st->exist(strdup(lhs_to_id(p->m_lhs)))){
-            this->t_error(no_array_var, p->m_attribute);
-        }
     }
 
     void check_array_access(ArrayAccess* p)
     {
+        Symbol* s = m_st->lookup(p->m_symname->spelling());
+        if(s->m_basetype != bt_string){
+            t_error(no_array_var, p->m_attribute);
+        }
+        else if(p->m_expr->m_attribute.m_basetype != bt_integer){
+            t_error(array_index_error, p->m_attribute);
+        }
+        
     }
 
     void check_array_element(ArrayElement* p)
