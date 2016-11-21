@@ -123,7 +123,7 @@ class Typecheck : public Visitor
     const char * lhs_to_id (Lhs* lhs){
         Variable *v = dynamic_cast<Variable*>(lhs);
         if(v) {
-                return v->m_symname->spelling();
+                return strdup(v->m_symname->spelling());
         }
 
         DerefVariable *dv = dynamic_cast<DerefVariable*>(lhs);
@@ -147,6 +147,8 @@ class Typecheck : public Visitor
         if(!m_st->exist(strdup("Main"))){
             t_error(no_main, p->m_attribute);
         }
+
+        
     }
 
     // Create a symbol for the procedure and check there is none already
@@ -160,6 +162,14 @@ class Typecheck : public Visitor
         s = new Symbol();
         name = strdup(p->m_symname->spelling());
         s->m_basetype = bt_procedure;
+
+        this->m_st->dump(stdout);
+        //Check to see if procedure already exists at the same scope
+        //SymScope* currentScope = this->m_st->get_scope();
+        //Symbol* exists = this->m_st->lookup(currentScope, name);
+        //if(exists != NULL){
+        //    this->t_error(dup_proc_name, p->m_attribute);
+        //}
 
         //Initialize Procedure Attributes
         s->m_return_type = p->m_type->m_attribute.m_basetype;
@@ -210,13 +220,28 @@ class Typecheck : public Visitor
         if(p->m_expr->m_attribute.m_basetype == bt_string){
             this->t_error(ret_type_mismatch, p->m_attribute);
         }
-        
     }
 
     // Check that function being called exists and that types of arguments
     // and return values are consistent
     void check_call(Call *p)
     {
+        if(!this->m_st->exist(strdup(p->m_symname->spelling()))){
+            this->t_error(proc_undef, p->m_attribute);
+        }
+        else{
+            //Lookup the symbol to reference
+            Symbol * s = this->m_st->lookup(lhs_to_id(p->m_lhs));
+
+            //Make sure number of arguments provided matches symbol
+            if(s->m_arg_type.size() != p->m_expr_list->size()){
+                this->t_error(narg_mismatch, p->m_attribute);
+            }
+
+          
+
+            
+        }
     }
 
     // For checking that this expressions type is boolean used in if/else
@@ -344,9 +369,12 @@ class Typecheck : public Visitor
 
     void visitProcedure_blockImpl(Procedure_blockImpl* p)
     {
+       
        m_st->open_scope();
+        //std::cout <<"open new scope\n";
        default_rule(p);  
        m_st->close_scope();     
+        //std::cout << "closing scope\n";
     }
 
     void visitDeclImpl(DeclImpl* p)
