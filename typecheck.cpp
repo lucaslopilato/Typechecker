@@ -282,11 +282,16 @@ class Typecheck : public Visitor
     // For checking that this expressions type is boolean used in while
     void check_pred_while(Expr* p)
     {
+        if(p->m_attribute.m_basetype != bt_boolean){
+            this->t_error(whilepred_err, p->m_attribute);
+        }
     }
 
     void check_assignment(Assignment* p)
     {
-        
+        if(p->m_lhs->m_attribute.m_basetype != p->m_expr->m_attribute.m_basetype){
+            this->t_error(incompat_assign, p->m_attribute);
+        }
     }
 
     void check_string_assignment(StringAssignment* p)
