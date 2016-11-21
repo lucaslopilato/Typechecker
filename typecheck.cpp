@@ -120,6 +120,24 @@ class Typecheck : public Visitor
     // Helpers
     // WRITEME: You might want write some hepler functions.
 
+    const char * lhs_to_id (Lhs* lhs){
+        Variable *v = dynamic_cast<Variable*>(lhs);
+        if(v) {
+                return v->m_symname->spelling();
+        }
+
+        DerefVariable *dv = dynamic_cast<DerefVariable*>(lhs);
+        if(dv) {
+            return dv->m_symname->spelling();
+        }   
+
+        ArrayElement *ae = dynamic_cast<ArrayElement*>(lhs);
+        if(ae) {
+            return ae->m_symname->spelling();
+        }
+
+        return nullptr;
+    }
     // Type Checking
     // WRITEME: You need to implement type-checking for this project
 
@@ -169,6 +187,7 @@ class Typecheck : public Visitor
             name = strdup((*iter)->spelling());
             s = new Symbol();
             s->m_basetype = p->m_type->m_attribute.m_basetype;
+            //std::cout << "Adding symbol "<< name<< " , " << s->m_basetype<< std::endl;
 
             if(!m_st->insert(name, s)){ //Check if symbol is not already present
                 this->t_error(dup_var_name, p->m_attribute);
@@ -183,11 +202,15 @@ class Typecheck : public Visitor
         //Type m_type
         //if(!
     }
-
+    
+    //TODO Pretty sure do not need
     // Check that the declared return type is not an array
     void check_return(Return *p)
     {
-
+        if(p->m_expr->m_attribute.m_basetype == bt_string){
+            this->t_error(ret_type_mismatch, p->m_attribute);
+        }
+        
     }
 
     // Check that function being called exists and that types of arguments
@@ -213,6 +236,9 @@ class Typecheck : public Visitor
 
     void check_string_assignment(StringAssignment* p)
     {
+        if(!m_st->exist(strdup(lhs_to_id(p->m_lhs)))){
+            this->t_error(no_array_var, p->m_attribute);
+        }
     }
 
     void check_array_access(ArrayAccess* p)
@@ -278,6 +304,8 @@ class Typecheck : public Visitor
 
     void checkset_variable(Variable* p)
     {
+        if(!m_st->exist(strdup(p->m_symname->spelling())))
+            this->t_error(var_undef, p->m_attribute);
     }
 
 
@@ -336,17 +364,21 @@ class Typecheck : public Visitor
     void visitStringAssignment(StringAssignment *p)
     {
        default_rule(p);
-       check_string_assignment(p);   
+       check_string_assignment(p);
+       p->m_lhs->m_attribute.m_basetype = bt_string;
     }
 
     void visitIdent(Ident* p)
     {
-       default_rule(p);       
+       default_rule(p);
+       Symbol* var = this->m_st->lookup(strdup(p->m_symname->spelling()));     
+       p->m_attribute.m_basetype =  var->m_basetype; 
     }
 
     void visitReturn(Return* p)
     {
        default_rule(p);
+       p->m_attribute.m_basetype = p->m_expr->m_attribute.m_basetype;
        check_return(p);       
     }
 
@@ -365,7 +397,7 @@ class Typecheck : public Visitor
     void visitWhileLoop(WhileLoop* p)
     {
        default_rule(p);
-       check_pred_while(p);       
+       check_pred_while(p->m_expr);       
     }
 
     void visitCodeBlock(CodeBlock *p) 
@@ -504,17 +536,20 @@ class Typecheck : public Visitor
 
     void visitIntLit(IntLit* p)
     {
-       default_rule(p);       
+       default_rule(p);
+       p->m_attribute.m_basetype = bt_integer;       
     }
 
     void visitCharLit(CharLit* p)
     {
-       default_rule(p);       
+       default_rule(p);
+       p->m_attribute.m_basetype = bt_char;        
     }
 
     void visitBoolLit(BoolLit* p)
     {
        default_rule(p);       
+       p->m_attribute.m_basetype = bt_boolean;       
     }
 
     void visitNullLit(NullLit* p)
@@ -536,8 +571,11 @@ class Typecheck : public Visitor
 
     void visitVariable(Variable* p)
     {
-       default_rule(p);    
-       checkset_variable(p);   
+       default_rule(p);   
+       checkset_variable(p);
+        //TODO might not need here, mixed up variable with Ident
+       Symbol* var = this->m_st->lookup(strdup(p->m_symname->spelling()));     
+       p->m_attribute.m_basetype =  var->m_basetype; 
     }
 
     void visitDeref(Deref* p)
@@ -555,13 +593,16 @@ class Typecheck : public Visitor
     void visitArrayElement(ArrayElement* p)
     {
        default_rule(p);
-       check_array_element(p); 
+       check_array_element(p);
+       //std::cout << "Visited aRRAY eLEmen"<< std::endl; 
     }
 
     // Special cases
     void visitPrimitive(Primitive* p) {}
     void visitSymName(SymName* p) {}
-    void visitStringPrimitive(StringPrimitive* p) {}
+    void visitStringPrimitive(StringPrimitive* p) {
+        //std::cout << "Visited String Primitive \n";
+    }
 };
 
 
