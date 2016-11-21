@@ -145,10 +145,13 @@ class Typecheck : public Visitor
     void check_for_one_main(ProgramImpl* p)
     {
         if(!m_st->exist(strdup("Main"))){
-            t_error(no_main, p->m_attribute);
+            this->t_error(no_main, p->m_attribute);
         }
 
-        
+        Symbol* main = m_st->lookup("Main");
+        if(!main->m_arg_type.empty()){
+            this->t_error(nonvoid_main, p->m_attribute);
+        }
     }
 
     // Create a symbol for the procedure and check there is none already
@@ -163,7 +166,6 @@ class Typecheck : public Visitor
         name = strdup(p->m_symname->spelling());
         s->m_basetype = bt_procedure;
 
-        this->m_st->dump(stdout);
         //Check to see if procedure already exists at the same scope
         //SymScope* currentScope = this->m_st->get_scope();
         //Symbol* exists = this->m_st->lookup(currentScope, name);
@@ -237,6 +239,8 @@ class Typecheck : public Visitor
             if(s->m_arg_type.size() != p->m_expr_list->size()){
                 this->t_error(narg_mismatch, p->m_attribute);
             }
+
+        
 
           
 
