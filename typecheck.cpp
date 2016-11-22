@@ -118,8 +118,6 @@ class Typecheck : public Visitor
     }
 
     // Helpers
-    // WRITEME: You might want write some hepler functions.
-
 
     const char * lhs_to_id (Lhs* lhs){
         Variable *v = dynamic_cast<Variable*>(lhs);
@@ -139,8 +137,8 @@ class Typecheck : public Visitor
 
         return nullptr;
     }
+
     // Type Checking
-    // WRITEME: You need to implement type-checking for this project
 
     // Check that there is one and only one main
     void check_for_one_main(ProgramImpl* p)
@@ -157,8 +155,6 @@ class Typecheck : public Visitor
         if(main->get_scope() != global_scope){
             this->t_error(no_main, p->m_attribute);
         }
-
-                
 
         //Make sure main has no arguments
         if(!main->m_arg_type.empty()){
@@ -178,14 +174,6 @@ class Typecheck : public Visitor
         s = new Symbol();
         name = strdup(p->m_symname->spelling());
         s->m_basetype = bt_procedure;
-
-        //this->m_st->dump(stdout);
-        //Check to see if procedure already exists at the same scope
-        //SymScope* currentScope = this->m_st->get_scope();
-        //Symbol* exists = this->m_st->lookup(currentScope, name);
-        //if(exists != NULL){
-        //    this->t_error(dup_proc_name, p->m_attribute);
-        //}
 
         //Initialize Procedure Attributes
         s->m_return_type = p->m_type->m_attribute.m_basetype;
@@ -241,7 +229,6 @@ class Typecheck : public Visitor
         }
     }
     
-    //TODO Pretty sure do not need
     // Check that the declared return type is not an array
     void check_return(Return *p)
     {
@@ -277,8 +264,6 @@ class Typecheck : public Visitor
             if(s->m_arg_type.size() != p->m_expr_list->size()){
                 this->t_error(narg_mismatch, p->m_attribute);
             }
-
-            
 
             //Run through each type and make sure they are the same
             std::vector<Basetype>::iterator sym = s->m_arg_type.begin();
@@ -321,7 +306,6 @@ class Typecheck : public Visitor
     }
 
 
-    //TODO might need symtab lookup not LHS lookup
     void check_assignment(Assignment* p)
     {
         if(p->m_lhs->m_attribute.m_basetype != p->m_expr->m_attribute.m_basetype){
@@ -826,7 +810,6 @@ class Typecheck : public Visitor
     {
        default_rule(p);
        check_array_access(p);
-        //TODO might not need
        p->m_attribute.m_basetype = bt_char;
     }
 
@@ -883,7 +866,6 @@ class Typecheck : public Visitor
     {
        default_rule(p);   
        checkset_variable(p);
-        //TODO might not need here, mixed up variable with Ident
        Symbol* var = this->m_st->lookup(strdup(p->m_symname->spelling()));     
        p->m_attribute.m_basetype =  var->m_basetype; 
     }
