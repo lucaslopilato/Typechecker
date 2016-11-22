@@ -224,9 +224,10 @@ LHSVar      : Identifier
             }
             ;
 
-LHSDeref    : '^' LHSVar
+LHSDeref    : '^' Identifier
             {
-                $$.u_lhs = new DerefVariable($1.u_symname);
+                // was '^' LHSVar
+                $$.u_lhs = new DerefVariable($2.u_symname);
             }
             ;
 

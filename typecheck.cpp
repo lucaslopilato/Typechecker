@@ -340,9 +340,10 @@ class Typecheck : public Visitor
         }
         
     }
-
+    //TODO
     void check_array_element(ArrayElement* p)
     {
+        
     }
 
     // For checking boolean operations(and, or ...)
@@ -464,6 +465,16 @@ class Typecheck : public Visitor
     // addressof
     void checkset_deref_lhs(DerefVariable* p)
     {
+       //Check if lhs exists
+       if(!m_st->exist(strdup(p->m_symname->spelling()))){
+            this->t_error(var_undef, p->m_attribute);
+        } 
+
+        Symbol* sym = m_st->lookup(strdup(p->m_symname->spelling()));
+        Basetype bt = sym->m_basetype;
+        if(bt != bt_intptr && bt != bt_charptr && bt != bt_char){
+            this->t_error(invalid_deref, p->m_attribute);
+        }
     }
 
     void checkset_variable(Variable* p)
@@ -545,8 +556,7 @@ class Typecheck : public Visitor
     {
        default_rule(p);
        p->m_attribute.m_basetype = p->m_type->m_attribute.m_basetype;
-       add_decl_symbol(p);
-    
+       add_decl_symbol(p); 
                
     }
 
@@ -554,13 +564,15 @@ class Typecheck : public Visitor
     {
        default_rule(p);
        check_assignment(p);       
+       p->m_attribute.m_basetype = p->m_expr->m_attribute.m_basetype;
     }
 
     void visitStringAssignment(StringAssignment *p)
     {
        default_rule(p);
        check_string_assignment(p);
-       p->m_lhs->m_attribute.m_basetype = bt_string;
+       p->m_attribute.m_basetype = bt_string;
+       //p->m_lhs->m_attribute.m_basetype = bt_string;
     }
 
     void visitIdent(Ident* p)
@@ -657,7 +669,6 @@ class Typecheck : public Visitor
        p->m_attribute.m_basetype = bt_integer; 
     }
 
-    //TODO Figure out what this Compare is
     void visitCompare(Compare* p)
     {
        default_rule(p);
@@ -813,17 +824,18 @@ class Typecheck : public Visitor
     {
        default_rule(p);       
        checkset_addressof(p, p->m_lhs);      
-        
-       //Find the Basetype of the variable being addressed
-       Symbol* s = this->m_st->lookup(strdup(lhs_to_id(p->m_lhs)));
-       Basetype bt = s->m_basetype;
+       
+       Basetype bt = p->m_lhs->m_attribute.m_basetype;
+       //TODO Figure out &"lop"[2]
 
+      
        if(bt == bt_integer){
             p->m_attribute.m_basetype = bt_intptr;
         } 
         else if(bt == bt_char){
             p->m_attribute.m_basetype = bt_charptr;
         }
+        
     }
 
     void visitVariable(Variable* p)
