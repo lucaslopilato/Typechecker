@@ -271,11 +271,14 @@ class Typecheck : public Visitor
             if(s->m_basetype != bt_procedure){
                 this->t_error(proc_undef, p->m_attribute);
             }
-        
+       
+             
             //Make sure number of arguments provided matches symbol
             if(s->m_arg_type.size() != p->m_expr_list->size()){
                 this->t_error(narg_mismatch, p->m_attribute);
             }
+
+            
 
             //Run through each type and make sure they are the same
             std::vector<Basetype>::iterator sym = s->m_arg_type.begin();
@@ -290,7 +293,13 @@ class Typecheck : public Visitor
                 //Advance Symbol Arguments
                 sym++;
             }
-
+            
+            //Make sure return type matches LHS type
+            std::cout << "LHS: " << p->m_lhs->m_attribute.m_basetype<<std::endl;
+            std::cout << "RetType: " << s->m_return_type<<std::endl;
+            if(s->m_return_type != p->m_lhs->m_attribute.m_basetype){
+                t_error(call_type_mismatch, p->m_attribute);
+            }
             
         }
     }
@@ -331,7 +340,12 @@ class Typecheck : public Visitor
 
     void check_array_access(ArrayAccess* p)
     {
-        Symbol* s = m_st->lookup(p->m_symname->spelling());
+        char * name = strdup((p->m_symname->spelling()));
+        if(!m_st->exist(name)){
+            //Make sure this is the proper error code
+            t_error(no_array_var,p->m_attribute);
+        }
+        Symbol* s = m_st->lookup(name);
         if(s->m_basetype != bt_string){
             t_error(no_array_var, p->m_attribute);
         }
@@ -340,9 +354,22 @@ class Typecheck : public Visitor
         }
         
     }
-    //TODO
+
     void check_array_element(ArrayElement* p)
     {
+        char * name = strdup((p->m_symname->spelling()));
+        if(!m_st->exist(name)){
+            //Make sure this is the proper error code
+            t_error(no_array_var,p->m_attribute);
+        }
+        Symbol* s = m_st->lookup(name);
+        if(s->m_basetype != bt_string){
+            t_error(no_array_var, p->m_attribute);
+        }
+        else if(p->m_expr->m_attribute.m_basetype != bt_integer){
+            t_error(array_index_error, p->m_attribute);
+        }
+
         
     }
 
@@ -524,24 +551,29 @@ class Typecheck : public Visitor
             (*iter)->accept(this);
         }
 
-       //Make sure the procedure properly defined 
-       check_proc(p); 
-        
+
+       p->m_type->accept(this);
+
+               
        //Add the new procedure symbols to the symtab
        add_proc_symbol(p); 
 
        //Call accept on all children besides the arguments 
        p->m_symname->accept(this);
-       p->m_type->accept(this);
        p->m_procedure_block->accept(this);
 
+       //Make sure the procedure properly defined 
+       check_proc(p); 
 
     }
 
     void visitCall(Call* p)
     {
        default_rule(p);
-       check_call(p);     
+       check_call(p);   
+    
+       Symbol* sym = m_st->lookup(p->m_symname->spelling());
+       p->m_attribute.m_basetype = sym->m_return_type;
        
        //Symbol* sym = this->m_st->lookup(strdup(p->m_symname->spelling())); 
        //p->m_attribute.m_basetype = sym->m_return_type;
