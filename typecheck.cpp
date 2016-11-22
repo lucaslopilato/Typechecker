@@ -358,10 +358,18 @@ class Typecheck : public Visitor
     // For checking arithmetic expressions(plus, times, ...)
     void checkset_arithexpr(Expr* parent, Expr* child1, Expr* child2)
     {
+        Basetype c1 = child1->m_attribute.m_basetype;
+        Basetype c2 = child2->m_attribute.m_basetype;
         //If Either Expressions are not integers, return an error
-        if(child1->m_attribute.m_basetype != bt_integer ||
-           child2->m_attribute.m_basetype != bt_integer){
-            t_error(expr_type_err, parent->m_attribute);
+        if(c1 != bt_integer || c2 != bt_integer){
+            if(c1 == bt_ptr || c1 == bt_intptr || c1 == bt_charptr ||
+               c2 == bt_ptr || c2 == bt_intptr || c2 == bt_charptr)
+            {
+                t_error(expr_pointer_arithmetic_err, parent->m_attribute);
+            }
+            else{
+                t_error(expr_type_err, parent->m_attribute);
+            }
         }
 
     }
@@ -376,9 +384,6 @@ class Typecheck : public Visitor
             return;
         }
         if(c1 == bt_charptr && c2 == bt_integer){
-            return;
-        }
-        else if(c1 == bt_integer && c2 == bt_charptr){
             return;
         }
         else{
@@ -401,6 +406,10 @@ class Typecheck : public Visitor
     {
         Basetype c1 = child1->m_attribute.m_basetype;
         Basetype c2 = child2->m_attribute.m_basetype;
+        if(c1 == bt_string || c2 == bt_string){
+            this->t_error(expr_type_err, parent->m_attribute);
+        }
+        
         //If the types are not the same, must determine if pointers present
         if(c1 != c2){
             //If nullptr is used with valid pointers, ok
@@ -472,7 +481,7 @@ class Typecheck : public Visitor
 
         Symbol* sym = m_st->lookup(strdup(p->m_symname->spelling()));
         Basetype bt = sym->m_basetype;
-        if(bt != bt_intptr && bt != bt_charptr && bt != bt_char){
+        if(bt != bt_intptr && bt != bt_charptr){
             this->t_error(invalid_deref, p->m_attribute);
         }
     }
