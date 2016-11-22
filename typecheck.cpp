@@ -145,14 +145,26 @@ class Typecheck : public Visitor
     // Check that there is one and only one main
     void check_for_one_main(ProgramImpl* p)
     {
+        //Check if a main exists
         if(!m_st->exist(strdup("Main"))){
             this->t_error(no_main, p->m_attribute);
         }
-
+        
+        //Lookup the Symbol for Main and the Current Scope(Global Scope)
+        SymScope* global_scope = this->m_st->get_scope();
         Symbol* main = m_st->lookup("Main");
+
+        if(main->get_scope() != global_scope){
+            this->t_error(no_main, p->m_attribute);
+        }
+
+                
+
+        //Make sure main has no arguments
         if(!main->m_arg_type.empty()){
             this->t_error(nonvoid_main, p->m_attribute);
         }
+
     }
 
     // Create a symbol for the procedure and check there is none already
@@ -190,7 +202,10 @@ class Typecheck : public Visitor
                 s->m_arg_type.push_back((*iter)->m_attribute.m_basetype);
              }
         }
-        if(!m_st->insert_in_parent_scope(name, s)){ 
+        if(!m_st->insert_in_parent_scope(name, s)){
+                if(strcmp(name, "Main")==0){
+                    this->t_error(no_main, p->m_attribute);
+                } 
                 //Check if symbol is not already present
                 this->t_error(dup_proc_name, p->m_attribute);
         }
@@ -219,8 +234,11 @@ class Typecheck : public Visitor
     // Check that the return statement of a procedure has the appropriate type
     void check_proc(ProcImpl *p)
     {
-        //Type m_type
-        //if(!
+        Basetype neededRet = p->m_type->m_attribute.m_basetype;
+        Basetype actualRet = p->m_procedure_block->m_attribute.m_basetype;
+        if(neededRet != actualRet){
+            this->t_error(ret_type_mismatch, p->m_attribute);
+        }
     }
     
     //TODO Pretty sure do not need
@@ -249,6 +267,11 @@ class Typecheck : public Visitor
             //Lookup the symbol to reference
             Symbol * s = this->m_st->lookup(pName);
 
+            //Make sure the type of the symbol is a procedure
+            if(s->m_basetype != bt_procedure){
+                this->t_error(proc_undef, p->m_attribute);
+            }
+        
             //Make sure number of arguments provided matches symbol
             if(s->m_arg_type.size() != p->m_expr_list->size()){
                 this->t_error(narg_mismatch, p->m_attribute);
@@ -257,9 +280,6 @@ class Typecheck : public Visitor
             //Run through each type and make sure they are the same
             std::vector<Basetype>::iterator sym = s->m_arg_type.begin();
 
-
-            std::cout << "test" << std::endl;
-                //std::cout << "Comparing types: " << (*iter)->m_attribute.m_basetype << "<" << (*sym)<<std::endl;
            for(std::list<Expr_ptr>::iterator iter = p->m_expr_list->begin();
             iter != p->m_expr_list->end(); ++iter)
             {
@@ -452,6 +472,12 @@ class Typecheck : public Visitor
             this->t_error(var_undef, p->m_attribute);
     }
 
+    void checkset_ident(Ident* p)
+    {
+        if(!m_st->exist(strdup(p->m_symname->spelling())))
+            this->t_error(var_undef, p->m_attribute);
+    }
+
 
   public:
 
@@ -494,7 +520,6 @@ class Typecheck : public Visitor
 
     void visitCall(Call* p)
     {
-       std::cout << "test";
        default_rule(p);
        check_call(p);     
        
@@ -512,7 +537,8 @@ class Typecheck : public Visitor
     void visitProcedure_blockImpl(Procedure_blockImpl* p)
     {
        default_rule(p);  
-       m_st->close_scope();     
+       m_st->close_scope();   
+       p->m_attribute.m_basetype = p->m_return_stat->m_attribute.m_basetype;  
     }
 
     void visitDeclImpl(DeclImpl* p)
@@ -540,6 +566,11 @@ class Typecheck : public Visitor
     void visitIdent(Ident* p)
     {
        default_rule(p);
+       
+       //Check if variable exists
+       checkset_ident(p);
+    
+       //If it does look it up and set the type
        Symbol* var = this->m_st->lookup(strdup(p->m_symname->spelling()));     
        p->m_attribute.m_basetype =  var->m_basetype; 
     }
